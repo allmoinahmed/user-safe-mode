@@ -4,7 +4,7 @@ Tags: debug, development, troubleshooting, plugin, mu-plugin
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,15 @@ clients, and other admins see no change.
 3. Visit the new *Safe Mode* menu in your admin sidebar.
 
 == Changelog ==
+
+= 1.2.0 =
+* Security: MU plugin now uses wp_validate_auth_cookie() instead of reading raw cookie username.
+* Reliability: Robust error handling for MU plugin file creation and removal.
+* Multisite: Explicitly blocked with admin notice.
+* UX: Persistent admin notice when Safe Mode is active with "Restore all" link.
+* Cleanup: Deactivation preserves user settings; only uninstall wipes them.
+* Capabilities: New filterable `usm_required_capability` hook.
+* Hardening: Stale/missing plugin entries are filtered out automatically.
 
 = 1.0.0 =
 * First release.

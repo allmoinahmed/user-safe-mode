@@ -92,11 +92,14 @@ Other users and visitors see everything working normally.
 
 ## ⚠️ Important Notes
 
-- **Multi-site not supported** yet. Single-site installs only.
+- **Multi-site not supported.** The plugin blocks activation on multisite networks. Single-site installs only.
 - **Your disabled list persists across logouts.** Stay in Safe Mode until you explicitly clear it.
 - **The User Safe Mode plugin itself** is hidden from the disable list — you can't accidentally lock yourself out.
 - **The MU plugin** (`wp-content/mu-plugins/usm-safe-mode.php`) is auto-managed. Don't edit it directly.
 - **Two users can have different disabled lists** — each user's settings are stored in their own `wp_usermeta`.
+- **Deactivation preserves your settings.** If you deactivate and reactivate the plugin, your disabled-plugin list is restored. Only deleting (uninstalling) the plugin wipes all user data.
+- **Cookie identity is verified.** The plugin uses WordPress's own `wp_validate_auth_cookie()` to cryptographically verify the logged-in cookie — raw cookie data is never trusted.
+- **Capability filter.** The default required capability is `manage_options`, but this can be customized via the `usm_required_capability` filter.
 
 ---
 
