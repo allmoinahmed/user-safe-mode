@@ -25,13 +25,16 @@ clients, and other admins see no change.
 == Changelog ==
 
 = 1.2.0 =
-* Security: MU plugin now uses wp_validate_auth_cookie() instead of reading raw cookie username.
-* Reliability: Robust error handling for MU plugin file creation and removal.
-* Multisite: Explicitly blocked with admin notice.
+* Security: MU plugin now uses wp_validate_auth_cookie() (HMAC + expiration + session token) instead of reading raw cookie username.
+* Reliability: Robust error handling for MU plugin file creation and removal; MU plugin is rewritten on upgrade when its contents change.
+* Multisite: Blocked at runtime with an admin notice; the MU plugin writer refuses to start on multisite networks.
 * UX: Persistent admin notice when Safe Mode is active with "Restore all" link.
 * Cleanup: Deactivation preserves user settings; only uninstall wipes them.
 * Capabilities: New filterable `usm_required_capability` hook.
-* Hardening: Stale/missing plugin entries are filtered out automatically.
+* Hardening: Stale/missing plugin entries are filtered out automatically; get_plugins() is loaded defensively before use.
+
+= 1.1.3 =
+* Minor maintenance release.
 
 = 1.0.0 =
 * First release.
