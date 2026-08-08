@@ -1,12 +1,12 @@
 <?php
 /**
  * Plugin Name: User Safe Mode
- * Plugin URI:  https://github.com/yourusername/user-safe-mode
+ * Plugin URI:  https://github.com/allmoinahmed/user-safe-mode
  * Description: Debug like a pro — disable plugins just for yourself. Other users and visitors see the site untouched.
  * Version:     1.2.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
- * Author:      Your Name
+ * Author:      Moin Uddin Ahmed
  * License:     GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: user-safe-mode
