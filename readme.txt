@@ -4,7 +4,7 @@ Tags: debug, development, troubleshooting, plugin, mu-plugin
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,9 @@ clients, and other admins see no change.
 3. Visit the new *Safe Mode* menu in your admin sidebar.
 
 == Changelog ==
+
+= 1.1.4 =
+* Safe Mode responses are never cached, so a disabled plugin can never leak to other users or visitors.
 
 = 1.1.3 =
 * Identity is resolved from the user's own WordPress logged-in cookie only.

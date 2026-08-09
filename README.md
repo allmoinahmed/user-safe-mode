@@ -69,6 +69,8 @@ On **every request**, that MU plugin:
 
 Because only the current request's own cookie is used, each user's disabled list applies only to that user.
 
+Whenever Safe Mode is active for the current user, the MU plugin also sends **no-store anti-cache headers** (`Cache-Control: no-cache, no-store, must-revalidate`, `Vary: Cookie`, and defines `DONOTCACHEPAGE`). This guarantees a Safe Mode response is never cached by a page cache, object cache, or CDN and served to another user or visitor.
+
 ### Why an MU plugin?
 
 The `option_active_plugins` filter fires at the very start of WordPress bootstrap — before regular plugins are loaded. A regular plugin would be too late because the option is already cached. An MU plugin loads just early enough to hook in.
@@ -94,6 +96,7 @@ Other users and visitors see everything working normally.
 ## ⚠️ Important Notes
 
 - **Identity comes from your own login cookie.** On each request the MU plugin reads the `wordpress_logged_in_*` cookie and resolves that username to a user ID. No cookie, no filtering — visitors and logged-out users always get the full plugin list.
+- **Safe Mode responses are never cached.** When your Safe Mode is active, the page is marked `no-store` so no cache (page cache, object cache, CDN) can store and leak it to other users or visitors.
 - **Your disabled list persists across logouts.** Stay in Safe Mode until you explicitly clear it.
 - **The User Safe Mode plugin itself** is hidden from the disable list — you can't accidentally lock yourself out.
 - **The MU plugin** (`wp-content/mu-plugins/usm-safe-mode.php`) is auto-managed. Don't edit it directly.
