@@ -43,6 +43,8 @@ That's it. The plugin auto-creates a small MU plugin needed for the filtering to
 ### Clear all
 Click **Clear All & Exit Safe Mode** — everything comes back for you immediately.
 
+If you deactivate User Safe Mode itself, its per-user filtering is stopped before WordPress saves the active plugin list. Plugins previously disabled only for you therefore return to their normal site-wide active state.
+
 ### Admin bar indicator
 When Safe Mode is active, the admin bar shows a **red "Safe Mode: N disabled"** badge. Click it to jump to the Safe Mode page, or use the **Clear** sub-link.
 

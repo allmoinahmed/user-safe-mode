@@ -3,7 +3,7 @@
  * Plugin Name: User Safe Mode
  * Plugin URI:  https://github.com/yourusername/user-safe-mode
  * Description: Debug like a pro — disable plugins just for yourself. Other users and visitors see the site untouched.
- * Version:     1.1.4
+ * Version:     1.1.5
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Author:      Your Name
@@ -21,7 +21,7 @@
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'USM_VERSION', '1.1.4' );
+define( 'USM_VERSION', '1.1.5' );
 define( 'USM_META_KEY', '_usm_disabled_plugins' );
 define( 'USM_MENU_SLUG', 'user-safe-mode' );
 
@@ -80,9 +80,44 @@ function usm_maybe_refresh_mu_plugin() {
 }
 
 // ============================================================================
+//  DEACTIVATION: Stop filtering before WordPress updates active_plugins
+// ============================================================================
+function usm_prepare_deactivation( $plugin ) {
+    if ( plugin_basename( __FILE__ ) !== $plugin ) {
+        return;
+    }
+
+    if ( ! defined( 'USM_DISABLE_FILTERING' ) ) {
+        define( 'USM_DISABLE_FILTERING', true );
+    }
+
+    if ( function_exists( 'usm_filter_active_plugins' ) ) {
+        remove_filter( 'option_active_plugins', 'usm_filter_active_plugins', 10 );
+    }
+    if ( function_exists( 'usm_filter_active_sitewide_plugins' ) ) {
+        remove_filter( 'option_active_sitewide_plugins', 'usm_filter_active_sitewide_plugins', 10 );
+    }
+}
+add_action( 'deactivate_plugin', 'usm_prepare_deactivation', 10, 1 );
+
+// ============================================================================
 //  DEACTIVATION: Remove the MU plugin + clear all user meta
 // ============================================================================
 function usm_on_deactivation() {
+    // Make sure any generated MU plugin filtering stops on this request
+    // before WordPress reads active_plugins to update the DB option.
+    if ( ! defined( 'USM_DISABLE_FILTERING' ) ) {
+        define( 'USM_DISABLE_FILTERING', true );
+    }
+
+    // If the MU plugin has already loaded, remove its filters directly.
+    if ( function_exists( 'usm_filter_active_plugins' ) ) {
+        remove_filter( 'option_active_plugins', 'usm_filter_active_plugins', 10 );
+    }
+    if ( function_exists( 'usm_filter_active_sitewide_plugins' ) ) {
+        remove_filter( 'option_active_sitewide_plugins', 'usm_filter_active_sitewide_plugins', 10 );
+    }
+
     $mu_file = WP_CONTENT_DIR . '/mu-plugins/usm-safe-mode.php';
     if ( file_exists( $mu_file ) ) {
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_unlink
@@ -98,6 +133,17 @@ register_deactivation_hook( __FILE__, 'usm_on_deactivation' );
 //  UNINSTALL: Same cleanup as deactivation
 // ============================================================================
 function usm_uninstall() {
+    if ( ! defined( 'USM_DISABLE_FILTERING' ) ) {
+        define( 'USM_DISABLE_FILTERING', true );
+    }
+
+    if ( function_exists( 'usm_filter_active_plugins' ) ) {
+        remove_filter( 'option_active_plugins', 'usm_filter_active_plugins', 10 );
+    }
+    if ( function_exists( 'usm_filter_active_sitewide_plugins' ) ) {
+        remove_filter( 'option_active_sitewide_plugins', 'usm_filter_active_sitewide_plugins', 10 );
+    }
+
     $mu_file = WP_CONTENT_DIR . '/mu-plugins/usm-safe-mode.php';
     if ( file_exists( $mu_file ) ) {
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_unlink
@@ -214,7 +260,10 @@ function usm_send_nocache_headers() {
     }
 }
 
-add_filter( 'option_active_plugins', function ( \$plugins ) {
+function usm_filter_active_plugins( \$plugins ) {
+    if ( defined( 'USM_DISABLE_FILTERING' ) && USM_DISABLE_FILTERING ) {
+        return \$plugins;
+    }
     if ( ! is_array( \$plugins ) ) { return \$plugins; }
     if ( ! usm_should_filter_plugins() ) { return \$plugins; }
 
@@ -230,9 +279,13 @@ add_filter( 'option_active_plugins', function ( \$plugins ) {
     usm_send_nocache_headers();
 
     return array_values( array_diff( \$plugins, \$disabled ) );
-} );
+}
+add_filter( 'option_active_plugins', 'usm_filter_active_plugins' );
 
-add_filter( 'option_active_sitewide_plugins', function ( \$plugins ) {
+function usm_filter_active_sitewide_plugins( \$plugins ) {
+    if ( defined( 'USM_DISABLE_FILTERING' ) && USM_DISABLE_FILTERING ) {
+        return \$plugins;
+    }
     if ( ! is_array( \$plugins ) ) { return \$plugins; }
     if ( ! usm_should_filter_plugins() ) { return \$plugins; }
 
@@ -253,7 +306,8 @@ add_filter( 'option_active_sitewide_plugins', function ( \$plugins ) {
         }
     }
     return \$plugins;
-} );
+}
+add_filter( 'option_active_sitewide_plugins', 'usm_filter_active_sitewide_plugins' );
 PHP;
 }
 
