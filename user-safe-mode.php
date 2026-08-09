@@ -3,7 +3,7 @@
  * Plugin Name: User Safe Mode
  * Plugin URI:  https://github.com/yourusername/user-safe-mode
  * Description: Debug like a pro — disable plugins just for yourself. Other users and visitors see the site untouched.
- * Version:     1.1.5
+ * Version:     1.1.6
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Author:      Your Name
@@ -21,7 +21,7 @@
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'USM_VERSION', '1.1.5' );
+define( 'USM_VERSION', '1.1.6' );
 define( 'USM_META_KEY', '_usm_disabled_plugins' );
 define( 'USM_MENU_SLUG', 'user-safe-mode' );
 
@@ -97,8 +97,55 @@ function usm_prepare_deactivation( $plugin ) {
     if ( function_exists( 'usm_filter_active_sitewide_plugins' ) ) {
         remove_filter( 'option_active_sitewide_plugins', 'usm_filter_active_sitewide_plugins', 10 );
     }
+
+    // Guard against the MU plugin having already filtered the option value.
+    // WordPress will read option_active_plugins to update the DB, so we must
+    // guarantee the stored option is written as the original, unfiltered list.
+    if ( function_exists( 'usm_get_original_active_plugins' ) ) {
+        add_filter( 'option_active_plugins', 'usm_get_original_active_plugins', 0, 1 );
+    }
+    add_filter( 'pre_update_option_active_plugins', 'usm_restore_active_plugins', 0, 3 );
 }
 add_action( 'deactivate_plugin', 'usm_prepare_deactivation', 10, 1 );
+
+/**
+ * If the MU plugin's option_active_plugins filter has already cached a filtered
+ * value, return the original stored option value directly from the database.
+ */
+function usm_get_original_active_plugins( $value ) {
+    global $wpdb;
+    return maybe_unserialize( $wpdb->get_var( $wpdb->prepare(
+        "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+        'active_plugins'
+    ) ) );
+}
+
+/**
+ * Ensure the active_plugins option is saved with the full, unfiltered list.
+ *
+ * WordPress does not directly use `update_option` when toggling plugins; it
+ * calls `update_option('active_plugins', ...)` which passes the current option
+ * value through the `pre_update_option_{$option}` filter. If the MU plugin
+ * filtered the read value, the filtered value would be saved. This filter
+ * restores the original DB value before WordPress writes it back.
+ */
+function usm_restore_active_plugins( $value, $option, $old_value ) {
+    if ( 'active_plugins' !== $option ) {
+        return $value;
+    }
+
+    global $wpdb;
+    $stored = $wpdb->get_var( $wpdb->prepare(
+        "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+        'active_plugins'
+    ) );
+
+    if ( null === $stored ) {
+        return $value;
+    }
+
+    return maybe_unserialize( $stored );
+}
 
 // ============================================================================
 //  DEACTIVATION: Remove the MU plugin + clear all user meta
@@ -117,6 +164,8 @@ function usm_on_deactivation() {
     if ( function_exists( 'usm_filter_active_sitewide_plugins' ) ) {
         remove_filter( 'option_active_sitewide_plugins', 'usm_filter_active_sitewide_plugins', 10 );
     }
+
+    add_filter( 'pre_update_option_active_plugins', 'usm_restore_active_plugins', 0, 3 );
 
     $mu_file = WP_CONTENT_DIR . '/mu-plugins/usm-safe-mode.php';
     if ( file_exists( $mu_file ) ) {
