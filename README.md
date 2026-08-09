@@ -55,18 +55,19 @@ WordPress loads plugins in this order:
 ```
 wp-settings.php loads:
   1. wp-includes/load.php          → basic functions (is_admin(), etc.)
-  2. wp-includes/pluggable.php     → is_user_logged_in(), wp_get_current_user()
-  3. mu-plugins/*.php              → must-use plugins
-  4. active plugins (from DB)      → regular plugins
+  2. mu-plugins/*.php              → must-use plugins
+  3. active plugins (from DB)      → regular plugins
 ```
 
 On **activation**, User Safe Mode writes a tiny **MU plugin** to `wp-content/mu-plugins/usm-safe-mode.php`.
 
 On **every request**, that MU plugin:
 
-1. **Reads only WordPress's current logged-in cookie** (`LOGGED_IN_COOKIE`) and verifies its HMAC signature, expiration timestamp, and session token before any plugin filtering is applied. The username is **never trusted from raw cookie data**. If the cookie cannot be verified, no filtering occurs.
-2. **Looks up your disabled list** from `wp_usermeta` (meta key: `_usm_disabled_plugins`).
-3. **Filters `option_active_plugins`** — removes your disabled plugins from the active list before any regular plugin code runs.
+1. **Finds the current user** by reading the WordPress logged-in cookie (`wordpress_logged_in_<hash>`) and looking that username up in `wp_users`. If no logged-in cookie is present (a visitor), no filtering occurs.
+2. **Looks up that user's disabled list** from `wp_usermeta` (meta key: `_usm_disabled_plugins`).
+3. **Filters `option_active_plugins`** (and `option_active_sitewide_plugins` for multisite) — removes that user's disabled plugins from the active list before any regular plugin code runs.
+
+Because only the current request's own cookie is used, each user's disabled list applies only to that user.
 
 ### Why an MU plugin?
 
@@ -92,14 +93,13 @@ Other users and visitors see everything working normally.
 
 ## ⚠️ Important Notes
 
-- **Multisite not supported — and disabled at runtime.** User Safe Mode detects multisite installs on every load and refuses to activate. An admins-only error notice is shown, all admin pages, the admin bar item, and the MU-plugin writer are skipped, and any active MU plugin from a previous install is removed. Single-site installs only.
-- **Identity is cryptographically verified.** On each request the MU plugin validates WordPress's current logged-in cookie, including its HMAC signature, expiration, and session token. It never trusts a raw username or a second/stale logged-in cookie, so a forged cookie cannot disable plugins for another user. If validation fails, the original plugin list is returned unchanged.
+- **Identity comes from your own login cookie.** On each request the MU plugin reads the `wordpress_logged_in_*` cookie and resolves that username to a user ID. No cookie, no filtering — visitors and logged-out users always get the full plugin list.
 - **Your disabled list persists across logouts.** Stay in Safe Mode until you explicitly clear it.
 - **The User Safe Mode plugin itself** is hidden from the disable list — you can't accidentally lock yourself out.
 - **The MU plugin** (`wp-content/mu-plugins/usm-safe-mode.php`) is auto-managed. Don't edit it directly.
 - **Two users can have different disabled lists** — each user's settings are stored in their own `wp_usermeta`.
-- **Deactivation preserves your settings.** If you deactivate and reactivate the plugin, your disabled-plugin list is restored. Only deleting (uninstalling) the plugin wipes all user data.
-- **Capability filter.** The default required capability is `manage_options`, but this can be customized via the `usm_required_capability` filter.
+- **Deactivation clears your settings.** Deactivating the plugin removes the MU plugin and wipes all users' disabled-plugin lists. Deleting (uninstalling) the plugin does the same.
+- **Capability required.** Only users with `manage_options` capability can use Safe Mode.
 
 ---
 
