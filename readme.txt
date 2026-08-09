@@ -25,7 +25,7 @@ clients, and other admins see no change.
 == Changelog ==
 
 = 1.2.0 =
-* Security: MU plugin now uses wp_validate_auth_cookie() (HMAC + expiration + session token) instead of reading raw cookie username.
+* Security: MU plugin now verifies only the current logged-in cookie (HMAC + expiration + session token) instead of accepting any wordpress_logged_in_* cookie.
 * Reliability: Robust error handling for MU plugin file creation and removal; MU plugin is rewritten on upgrade when its contents change.
 * Multisite: Blocked at runtime with an admin notice; the MU plugin writer refuses to start on multisite networks.
 * UX: Persistent admin notice when Safe Mode is active with "Restore all" link.

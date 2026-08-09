@@ -273,44 +273,40 @@ function usm_get_user_id_from_cookie() {
 		return 0;
 	}
 
-	foreach ( \$_COOKIE as \$name => \$value ) {
-		if ( strpos( (string) \$name, 'wordpress_logged_in_' ) !== 0 || ! is_string( \$value ) ) {
-			continue;
-		}
-		\$parts = explode( '|', stripslashes( \$value ) );
-		if ( 4 !== count( \$parts ) ) { continue; }
-		list( \$username, \$expiration, \$token, \$hmac ) = \$parts;
-		if ( '' === \$username || ! ctype_digit( \$expiration ) || '' === \$token || '' === \$hmac || (int) \$expiration < time() ) {
-			continue;
-		}
-
-		\$user = \$wpdb->get_row( \$wpdb->prepare( "SELECT ID, user_login, user_pass FROM {\$wpdb->users} WHERE user_login = %s LIMIT 1", \$username ) );
-		if ( ! \$user ) { continue; }
-
-		// Derive pass_frag the same way WordPress core does in wp_validate_auth_cookie().
-		if ( 0 === strpos( \$user->user_pass, '\$P\$' ) || 0 === strpos( \$user->user_pass, '\$2y\$' ) ) {
-			\$pass_frag = substr( \$user->user_pass, 8, 4 );
-		} else {
-			\$pass_frag = substr( \$user->user_pass, -4 );
-		}
-
-		// wp_hash( data, 'logged_in' ) === hash_hmac( 'md5', data, LOGGED_IN_KEY . LOGGED_IN_SALT ).
-		\$key = hash_hmac( 'md5', \$username . '|' . \$pass_frag . '|' . \$expiration . '|' . \$token, LOGGED_IN_KEY . LOGGED_IN_SALT );
-		\$expected = hash_hmac( 'sha256', \$username . '|' . \$expiration . '|' . \$token, \$key );
-		if ( ! function_exists( 'hash_equals' ) || ! hash_equals( \$expected, \$hmac ) ) { continue; }
-
-		// Session token validity (WP_Session_Tokens stores sessions in usermeta keyed by sha256(token)).
-		\$raw = \$wpdb->get_var( \$wpdb->prepare( "SELECT meta_value FROM {\$wpdb->usermeta} WHERE user_id = %d AND meta_key = 'session_tokens' LIMIT 1", (int) \$user->ID ) );
-		\$sessions = is_string( \$raw ) ? @unserialize( \$raw ) : false;
-		if ( ! is_array( \$sessions ) ) { continue; }
-		\$token_hash = hash( 'sha256', \$token );
-		if ( ! isset( \$sessions[ \$token_hash ] ) || ! is_array( \$sessions[ \$token_hash ] ) || empty( \$sessions[ \$token_hash ]['expiration'] ) || (int) \$sessions[ \$token_hash ]['expiration'] < time() ) {
-			continue;
-		}
-		return (int) \$user->ID;
+	// Use only WordPress's current logged-in cookie. If the constant is not
+	// available, fail closed rather than guessing from arbitrary cookie names.
+	if ( ! defined( 'LOGGED_IN_COOKIE' ) || ! isset( \$_COOKIE[ LOGGED_IN_COOKIE ] ) || ! is_string( \$_COOKIE[ LOGGED_IN_COOKIE ] ) ) {
+		return 0;
 	}
-	return 0;
-}
+
+	\$parts = explode( '|', stripslashes( \$_COOKIE[ LOGGED_IN_COOKIE ] ) );
+	if ( 4 !== count( \$parts ) ) { return 0; }
+	list( \$username, \$expiration, \$token, \$hmac ) = \$parts;
+	if ( '' === \$username || ! ctype_digit( \$expiration ) || '' === \$token || '' === \$hmac || (int) \$expiration < time() ) {
+		return 0;
+	}
+
+	\$user = \$wpdb->get_row( \$wpdb->prepare( "SELECT ID, user_login, user_pass FROM {\$wpdb->users} WHERE user_login = %s LIMIT 1", \$username ) );
+	if ( ! \$user ) { return 0; }
+
+	// Derive pass_frag the same way WordPress core does in wp_validate_auth_cookie().
+	\$pass_frag = substr( \$user->user_pass, 8, 4 );
+
+	// wp_hash( data, 'logged_in' ) === hash_hmac( 'md5', data, LOGGED_IN_KEY . LOGGED_IN_SALT ).
+	\$key = hash_hmac( 'md5', \$username . '|' . \$pass_frag . '|' . \$expiration . '|' . \$token, LOGGED_IN_KEY . LOGGED_IN_SALT );
+	\$expected = hash_hmac( 'sha256', \$username . '|' . \$expiration . '|' . \$token, \$key );
+	if ( ! function_exists( 'hash_equals' ) || ! hash_equals( \$expected, \$hmac ) ) { return 0; }
+
+	// Session token validity (WP_Session_Tokens stores sessions in usermeta keyed by sha256(token)).
+	\$raw = \$wpdb->get_var( \$wpdb->prepare( "SELECT meta_value FROM {\$wpdb->usermeta} WHERE user_id = %d AND meta_key = 'session_tokens' LIMIT 1", (int) \$user->ID ) );
+	\$sessions = is_string( \$raw ) ? @unserialize( \$raw ) : false;
+	if ( ! is_array( \$sessions ) ) { return 0; }
+	\$token_hash = hash( 'sha256', \$token );
+	if ( ! isset( \$sessions[ \$token_hash ] ) || ! is_array( \$sessions[ \$token_hash ] ) || empty( \$sessions[ \$token_hash ]['expiration'] ) || (int) \$sessions[ \$token_hash ]['expiration'] < time() ) {
+		return 0;
+	}
+	return (int) \$user->ID;
+	}
 
 /**
  * Skip filtering on the Safe Mode admin page so the plugin list sees the

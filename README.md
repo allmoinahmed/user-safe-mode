@@ -64,7 +64,7 @@ On **activation**, User Safe Mode writes a tiny **MU plugin** to `wp-content/mu-
 
 On **every request**, that MU plugin:
 
-1. **Reads the WordPress auth cookie** and passes it through WordPress's own `wp_validate_auth_cookie()` — this cryptographically verifies the cookie's HMAC signature, expiration timestamp, and session token before any plugin filtering is applied. The username is **never trusted from raw cookie data**.
+1. **Reads only WordPress's current logged-in cookie** (`LOGGED_IN_COOKIE`) and verifies its HMAC signature, expiration timestamp, and session token before any plugin filtering is applied. The username is **never trusted from raw cookie data**. If the cookie cannot be verified, no filtering occurs.
 2. **Looks up your disabled list** from `wp_usermeta` (meta key: `_usm_disabled_plugins`).
 3. **Filters `option_active_plugins`** — removes your disabled plugins from the active list before any regular plugin code runs.
 
@@ -93,7 +93,7 @@ Other users and visitors see everything working normally.
 ## ⚠️ Important Notes
 
 - **Multisite not supported — and disabled at runtime.** User Safe Mode detects multisite installs on every load and refuses to activate. An admins-only error notice is shown, all admin pages, the admin bar item, and the MU-plugin writer are skipped, and any active MU plugin from a previous install is removed. Single-site installs only.
-- **Identity is cryptographically verified.** On each request the MU plugin calls WordPress's own `wp_validate_auth_cookie()` — the same function `wp_login()` uses — to verify the HMAC signature, expiration, and session token of the logged-in cookie. The raw username or any other cookie field is never trusted, so a forged cookie cannot disable plugins for another user.
+- **Identity is cryptographically verified.** On each request the MU plugin validates WordPress's current logged-in cookie, including its HMAC signature, expiration, and session token. It never trusts a raw username or a second/stale logged-in cookie, so a forged cookie cannot disable plugins for another user. If validation fails, the original plugin list is returned unchanged.
 - **Your disabled list persists across logouts.** Stay in Safe Mode until you explicitly clear it.
 - **The User Safe Mode plugin itself** is hidden from the disable list — you can't accidentally lock yourself out.
 - **The MU plugin** (`wp-content/mu-plugins/usm-safe-mode.php`) is auto-managed. Don't edit it directly.
